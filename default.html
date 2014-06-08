@@ -1,0 +1,283 @@
+<html>
+<head>
+
+	<script type="text/javascript" src="jquery.js"></script>
+	<script type="text/javascript" src="moment.js"></script>
+
+<script type="text/javascript">
+
+function renderCal() {
+	cal.render();
+}
+
+// function prev() {
+// 	cal.render(-1);
+// 	return true;
+// }
+
+// function next() {
+// 	cal.render(1);
+// 	return false;
+// }
+
+var Calendar = function(options) {
+
+	this.options = $.extend({
+		dates: {
+			unavailable: []
+		}
+	}, options);
+
+	var my = this;
+	var unavailable = options.dates.unavailable;
+	options.dates.unavailable = {};
+	$.each(unavailable, function(k,v) {
+		var date = moment(v);
+		var key = date.format('YYYY-MM');
+		options.dates.unavailable[key] = options.dates.unavailable[key] || {};
+		options.dates.unavailable[key][date.date()] = true;
+	});
+
+
+
+	this.date = moment();
+
+	var my = this;
+	$(function() {
+		$(document.body).append('<div class="cal"></div>');
+		my.$el = $('.cal');
+	});
+
+};
+Calendar.prototype = {
+
+	render: function(offsetMonth) {
+
+		offsetMonth = offsetMonth || 0;
+
+		if(offsetMonth) {
+			this.date.add('month', offsetMonth);
+		}
+
+		// 0 = Sunday, 6 = Saturday
+		var refDate = this.date;
+		var firstOfMonth = refDate.subtract('days', refDate.date()-1);
+		var firstDayOfTheMonth = firstOfMonth.day();
+		var numberOfDaysInMonth = refDate.daysInMonth();
+		var today = moment();
+		var todayDate = today.day();
+		var isThisMonth = false;
+		var compareFormat = 'mmyyyy';
+
+		if(today.format(compareFormat) === refDate.format(compareFormat))
+			isThisMonth = true;
+
+		var dayOffset = 1;  // start from Mon
+
+		var htm = '<ol>',
+			days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+			numberOfDaysInWeek = 7;
+
+		var i, liCount = 0;
+
+		// header
+		for(i = dayOffset; i <= numberOfDaysInWeek; i++) {
+			htm += '<li class="th">' + days[i%numberOfDaysInWeek] + '</li>';
+			liCount++
+		}
+
+		// lead-in (empty) cells
+		i = dayOffset;
+		while(i % 7 != firstDayOfTheMonth) {
+			htm += '<li class="empty"></li>';
+			i++;
+			liCount++
+		}
+
+		// days
+		var day = moment(firstOfMonth);
+		var unavailableKey = day.format('YYYY-MM');
+		var unavailableDatesForMonth = this.options.dates.unavailable[unavailableKey];
+		for(i = 1; i <= numberOfDaysInMonth; i++) {
+			var css = 'date';
+			var daynum = day.day();
+			if(isThisMonth && i == todayDate) css += ' today';
+			if(daynum === 0 || daynum === 6) css += ' we';
+
+			if(unavailableDatesForMonth) {
+				if(unavailableDatesForMonth[day.date()]) css += ' dis';
+			}
+
+			htm += '<li class="' + css + '">' + i + '</li>';
+			liCount++;
+			day.add('days', 1);
+		}
+
+		// trailing (empty) cells
+		var remainingCells = 7 - liCount % 7;
+		if(remainingCells < 7) {
+			for(i = 0; i < remainingCells; i++) {
+				htm += '<li class="empty"></li>';
+			}
+		}
+
+		htm += '</ol><br/>';
+
+		var header = '' + 
+			'<div class="header">' + 
+				'<a class="prev year">&lt;&lt;</a><a class="prev month">&lt;</a><h1>' + refDate.format('MMMM YYYY') + '</h1><a class="next month">&gt;</a><a class="next year">&gt;&gt;</a>' + 
+				'<div style="clear:both;"></div>' +
+			'</div>';
+
+
+		this.$el.html(header + htm);
+
+		$('.date').on('click', function(){
+			$('.date.selected').removeClass('selected');
+			$(this).addClass('selected')
+		});
+
+		$('.prev').on('click', function(e){
+			e.preventDefault();
+			var offset = -1;
+			if($(this).hasClass('year')) offset *= 12;
+			cal.render(offset);
+		});
+
+		$('.next').on('click', function(e){
+			e.preventDefault();
+			var offset = 1;
+			if($(this).hasClass('year')) offset *= 12;
+			cal.render(offset);
+		});
+
+
+
+	}
+
+};
+
+var cal = new Calendar({
+	dates: {
+		unavailable : ['2014-06-09', '2014-07-09', '2014-08-14']
+	}
+});
+
+
+
+</script>
+
+
+
+<style type="text/css">
+
+body {
+	font-family:arial;
+	font-size:11px;
+}
+
+br {
+	clear:both;
+}
+
+.cal {
+	border:solid 1px black;
+	width:182px;
+	position:relative;
+}
+
+.header {
+	height:30px;
+	border-bottom:solid 1px black;
+}
+.header > * {
+	float:left;
+}
+.header .prev, .header .next {
+	color: white;
+	background-color:#999;
+	width:20px;
+	height:30px;
+	line-height:30px;
+	text-align:center;
+	cursor:pointer;
+	font-size:1.0em;
+}
+.header h1 {
+	margin:0;
+	text-align:center;
+	height:100%;
+	font-size:1.2em;
+	line-height:30px;
+	width:102px;
+}
+
+
+
+
+
+ol{
+	list-style-type: none;
+	margin: 0px;
+    padding: 0px;
+    width:100%;
+}
+
+ol li {
+	border:solid 1px #aaa;
+	border-left:none;
+	border-bottom:none;
+	display:block;
+	float:left;
+	height:25px;
+	line-height:25px;
+	text-align:center;
+	width:25px;
+	cursor:pointer;
+}
+
+ol li.empty {
+	cursor:inherit;	
+}
+
+ol li:nth-child(7n) {
+	border-right:none;
+}
+
+ol li.th {
+	border-top:none;
+	line-height:25px;
+	height:25px;
+}
+ol li.date {
+	background-color: #f6f6f6;
+}
+ol li.today {
+	background-color: yellow;
+}
+ol li.we {
+	background-color: #e0e0e0;
+}
+ol li.dis {
+	background-color: #909090;
+	color:#303030;
+}
+ol li.selected {
+	background-color: green;
+}
+
+
+
+</style>
+
+
+
+</head>
+<body onload="renderCal()">
+
+
+
+
+</body>
+</html>
+
